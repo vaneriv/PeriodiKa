@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Enlaces Químicos</title>
+    <link rel="stylesheet" href="assets/css/animated-background.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: transparent;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            transition: all 0.5s ease;
+        }
+        h1.mode-change {
+            transform: scale(1.1);
+            color: #4CAF50;
+        }
+        #periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 60px);
+            grid-template-rows: repeat(10, 60px);
+            gap: 4px;
+            margin: 20px auto;
+            max-width: 1100px;
+        }
+        .element {
+            border: 1px solid #ccc;
+            padding: 8px 4px;
+            text-align: center;
+            cursor: pointer;
+            background-color: white;
+            border-radius: 5px;
+            transition: all 0.2s;
+            font-size: 12px;
+            position: relative;
+        }
+        .element:hover {
+            transform: scale(1.1);
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+        .element:hover::after {
+            content: attr(data-name) " (" attr(data-mass) " u, EN: " attr(data-electronegativity) ")";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #fff;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 10px;
+            white-space: nowrap;
+            z-index: 100;
+        }
+        .element .symbol {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .element .number {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            font-size: 8px;
+            color: #666;
+        }
+        .element .valences {
+            font-size: 10px;
+            color: #e74c3c;
+            margin-top: 3px;
+        }
+        .element.selected {
+            transform: scale(1.15);
+            z-index: 100;
+            box-shadow: 0 0 15px rgba(44,62,80,0.4);
+            border: 2px solid #2C3E50;
+        }
+        #selected-elements {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 20px 0;
+            min-height: 50px;
+            padding: 10px;
+            background: transparent !important;
+            border-radius: 5px;
+        }
+        .selected-element {
+            background-color: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .selected-element button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        button {
+            background-color: #2C3E50;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button:hover {
+            background-color: #34495E;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        #bond-mode {
+            background-color: #E74C3C;
+        }
+        #bond-mode:hover {
+            background-color: #C0392B;
+        }
+        #calculate {
+            background-color: #27AE60;
+        }
+        #calculate:hover {
+            background-color: #219A52;
+        }
+        #clear {
+            background-color: #8E44AD;
+        }
+        #clear:hover {
+            background-color: #7D3C98;
+        }
+        #results {
+            background: rgba(30,40,50,0.7);
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            min-height: 100px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .bond-info {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .bond-info h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .ionic {
+            border-left: 5px solid #e74c3c;
+        }
+        .covalent {
+            border-left: 5px solid #3498db;
+        }
+        .metallic {
+            border-left: 5px solid #f39c12;
+        }
+        .bond-type {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .bond-description {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #003b62;
+            color: white;
+        }
+        .common-compound {
+            background-color: #e8f8f5;
+        }
+        .uncommon-compound {
+            opacity: 0.7;
+        }
+        /* Colores por categoría */
+        .element.nonmetal { background-color: #FF6B6B; } /* Rojo coral */
+        .element.alkali { background-color: #4ECDC4; } /* Turquesa */
+        .element.alkaline { background-color: #FFB84D; } /* Naranja ámbar */
+        .element.transition { background-color: #95A5A6; } /* Gris azulado */
+        .element.metalloid { background-color: #AC92EC; } /* Púrpura lavanda */
+        .element.halogen { background-color: #A8E6CF; } /* Verde menta */
+        .element.noble { background-color: #FFD93D; } /* Amarillo dorado */
+        .element.lanthanide { background-color: #FF8B94; } /* Rosa coral */
+        .element.actinide { background-color: #6C5CE7; } /* Azul índigo */
+        .element.metal { background-color: #74B9FF; } /* Azul cielo */
+        .search-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .search-container input {
+            padding: 10px;
+            width: 50%;
+            border: 1px solid #222;
+            border-radius: 5px;
+            background: rgba(30,40,50,0.7);
+            color: #fff;
+        }
+        /* Estilos para la ventana emergente */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-button:hover,
+        .close-button:focus {
+            color: #000;
+            text-decoration: none;
+        }
+
+        #legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px auto;
+            justify-content: center;
+        }
+        #legend div {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        #legend span {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+
+        /* Estilos para el popup */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            max-width: 80%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .popup-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .popup-close:hover {
+            color: #000;
+        }
+
+        #popup-content {
+            margin-top: 20px;
+        }
+
+        #popup-content h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        #popup-content img {
+            max-width: 100%;
+            height: auto;
+            margin: 10px 0;
+        }
+
+        #popup-content p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+
+        #popup-content strong {
+            color: #2c3e50;
+        }
+
+        #popup-content ul, #popup-content ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        #popup-content li {
+            margin-bottom: 5px;
+        }
+        .levantado {
+            z-index: 200 !important;
+            transform: translateY(-20px) scale(1.18) !important;
+            box-shadow: 0 8px 24px rgba(44,62,80,0.25);
+            transition: all 0.3s cubic-bezier(.4,2,.6,1);
+            border: 2px solid #003b62;
+        }
+        .element.resaltado-categoria {
+            border: 2.5px solid #003b62 !important;
+            box-shadow: 0 0 16px #003b6233;
+            filter: none;
+            z-index: 10;
+        }
+        .element.desactivado-categoria {
+            background: #fff !important;
+            opacity: 0.5;
+            filter: grayscale(0.5) brightness(1.2);
+            border: 1px solid #eee !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="animated-background">
+        <div class="particles">
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+            <div class="particle"></div>
+        </div>
+    </div>
+    <h1>TABLA PERIODICA</h1>
+    <p style="text-align: center;">Selecciona elementos para analizar sus enlaces y compuestos</p>
+    
+    <div id="legend">
+        <div><span class="element nonmetal"></span> No metales</div>
+        <div><span class="element alkali"></span> Metales alcalinos</div>
+        <div><span class="element alkaline"></span> Metales alcalinotérreos</div>
+        <div><span class="element transition"></span> Metales de transición</div>
+        <div><span class="element metalloid"></span> Metaloides</div>
+        <div><span class="element halogen"></span> Halógenos</div>
+        <div><span class="element noble"></span> Gases nobles</div>
+    </div>
+
+    <div class="search-container">
+        <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Buscar elemento por símbolo, nombre o número..." 
+        />
+    </div>
+    
+    <div id="controls">
+        <div id="selected-elements"></div>
+        <button id="bond-mode">Modo Enlaces</button>
+        <button id="calculate">Analizar Enlaces</button>
+        <button id="clear">Limpiar</button>
+    </div>
+    <div id="periodic-table"></div>
+    
+    <div id="results"></div>
+
+    <!-- Ventana emergente -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="close-modal">&times;</span>
+            <div id="modal-results"></div>
+        </div>
+    </div>
+
+    <div class="popup-overlay"></div>
+    <div class="popup">
+        <button class="popup-close">&times;</button>
+        <div id="popup-content"></div>
+    </div>
+
+    <script>
+       
+        // Base de datos COMPLETA de los 118 elementos con valencias, masas atómicas y electronegatividades
+        const elements = [
+            { symbol: "H", name: "Hidrógeno", valences: [1, -1], category: "nonmetal", mass: 1.008, electronegativity: 2.20 },
+            { symbol: "He", name: "Helio", valences: [0], category: "noble", mass: 4.0026, electronegativity: null },
+            { symbol: "Li", name: "Litio", valences: [1], category: "alkali", mass: 6.94, electronegativity: 0.98 },
+            { symbol: "Be", name: "Berilio", valences: [2], category: "alkaline", mass: 9.0122, electronegativity: 1.57 },
+            { symbol: "B", name: "Boro", valences: [3], category: "metalloid", mass: 10.81, electronegativity: 2.04 },
+            { symbol: "C", name: "Carbono", valences: [4, -4, 2], category: "nonmetal", mass: 12.011, electronegativity: 2.55 },
+            { symbol: "N", name: "Nitrógeno", valences: [3, -3, 5], category: "nonmetal", mass: 14.007, electronegativity: 3.04 },
+            { symbol: "O", name: "Oxígeno", valences: [-2], category: "nonmetal", mass: 15.999, electronegativity: 3.44 },
+            { symbol: "F", name: "Flúor", valences: [-1], category: "halogen", mass: 18.998, electronegativity: 3.98 },
+            { symbol: "Ne", name: "Neón", valences: [0], category: "noble", mass: 20.180, electronegativity: null },
+            { symbol: "Na", name: "Sodio", valences: [1], category: "alkali", mass: 22.990, electronegativity: 0.93 },
+            { symbol: "Mg", name: "Magnesio", valences: [2], category: "alkaline", mass: 24.305, electronegativity: 1.31 },
+            { symbol: "Al", name: "Aluminio", valences: [3], category: "metal", mass: 26.982, electronegativity: 1.61 },
+            { symbol: "Si", name: "Silicio", valences: [4, -4], category: "metalloid", mass: 28.085, electronegativity: 1.90 },
+            { symbol: "P", name: "Fósforo", valences: [3, -3, 5], category: "nonmetal", mass: 30.974, electronegativity: 2.19 },
+            { symbol: "S", name: "Azufre", valences: [4, -2, 6], category: "nonmetal", mass: 32.06, electronegativity: 2.58 },
+            { symbol: "Cl", name: "Cloro", valences: [-1, 1, 3, 5, 7], category: "halogen", mass: 35.45, electronegativity: 3.16 },
+            { symbol: "Ar", name: "Argón", valences: [0], category: "noble", mass: 39.948, electronegativity: null },
+            { symbol: "K", name: "Potasio", valences: [1], category: "alkali", mass: 39.098, electronegativity: 0.82 },
+            { symbol: "Ca", name: "Calcio", valences: [2], category: "alkaline", mass: 40.078, electronegativity: 1.00 },
+            { symbol: "Sc", name: "Escandio", valences: [3], category: "transition", mass: 44.956, electronegativity: 1.36 },
+            { symbol: "Ti", name: "Titanio", valences: [2, 3, 4], category: "transition", mass: 47.867, electronegativity: 1.54 },
+            { symbol: "V", name: "Vanadio", valences: [2, 3, 4, 5], category: "transition", mass: 50.942, electronegativity: 1.63 },
+            { symbol: "Cr", name: "Cromo", valences: [2, 3, 6], category: "transition", mass: 51.996, electronegativity: 1.66 },
+            { symbol: "Mn", name: "Manganeso", valences: [2, 4, 7], category: "transition", mass: 54.938, electronegativity: 1.55 },
+            { symbol: "Fe", name: "Hierro", valences: [2, 3], category: "transition", mass: 55.845, electronegativity: 1.83 },
+            { symbol: "Co", name: "Cobalto", valences: [2, 3], category: "transition", mass: 58.933, electronegativity: 1.88 },
+            { symbol: "Ni", name: "Níquel", valences: [2, 3], category: "transition", mass: 58.693, electronegativity: 1.91 },
+            { symbol: "Cu", name: "Cobre", valences: [1, 2], category: "transition", mass: 63.546, electronegativity: 1.90 },
+            { symbol: "Zn", name: "Zinc", valences: [2], category: "transition", mass: 65.38, electronegativity: 1.65 },
+            { symbol: "Ga", name: "Galio", valences: [3], category: "metal", mass: 69.723, electronegativity: 1.81 },
+            { symbol: "Ge", name: "Germanio", valences: [4], category: "metalloid", mass: 72.630, electronegativity: 2.01 },
+            { symbol: "As", name: "Arsénico", valences: [3, 5], category: "metalloid", mass: 74.922, electronegativity: 2.18 },
+            { symbol: "Se", name: "Selenio", valences: [4, -2, 6], category: "nonmetal", mass: 78.971, electronegativity: 2.55 },
+            { symbol: "Br", name: "Bromo", valences: [-1, 1, 5], category: "halogen", mass: 79.904, electronegativity: 2.96 },
+            { symbol: "Kr", name: "Kriptón", valences: [2], category: "noble", mass: 83.798, electronegativity: 3.00 },
+            { symbol: "Rb", name: "Rubidio", valences: [1], category: "alkali", mass: 85.468, electronegativity: 0.82 },
+            { symbol: "Sr", name: "Estroncio", valences: [2], category: "alkaline", mass: 87.62, electronegativity: 0.95 },
+            { symbol: "Y", name: "Itrio", valences: [3], category: "transition", mass: 88.906, electronegativity: 1.22 },
+            { symbol: "Zr", name: "Circonio", valences: [4], category: "transition", mass: 91.224, electronegativity: 1.33 },
+            { symbol: "Nb", name: "Niobio", valences: [3, 5], category: "transition", mass: 92.906, electronegativity: 1.6 },
+            { symbol: "Mo", name: "Molibdeno", valences: [3, 6], category: "transition", mass: 95.95, electronegativity: 2.16 },
+            { symbol: "Tc", name: "Tecnecio", valences: [7], category: "transition", mass: 98, electronegativity: 1.9 },
+            { symbol: "Ru", name: "Rutenio", valences: [3, 4], category: "transition", mass: 101.07, electronegativity: 2.2 },
+            { symbol: "Rh", name: "Rodio", valences: [3], category: "transition", mass: 102.91, electronegativity: 2.28 },
+            { symbol: "Pd", name: "Paladio", valences: [2, 4], category: "transition", mass: 106.42, electronegativity: 2.20 },
+            { symbol: "Ag", name: "Plata", valences: [1], category: "transition", mass: 107.87, electronegativity: 1.93 },
+            { symbol: "Cd", name: "Cadmio", valences: [2], category: "transition", mass: 112.41, electronegativity: 1.69 },
+            { symbol: "In", name: "Indio", valences: [3], category: "metal", mass: 114.82, electronegativity: 1.78 },
+            { symbol: "Sn", name: "Estaño", valences: [2, 4], category: "metal", mass: 118.71, electronegativity: 1.96 },
+            { symbol: "Sb", name: "Antimonio", valences: [3, 5], category: "metalloid", mass: 121.76, electronegativity: 2.05 },
+            { symbol: "Te", name: "Telurio", valences: [4, -2, 6], category: "metalloid", mass: 127.60, electronegativity: 2.1 },
+            { symbol: "I", name: "Yodo", valences: [-1, 1, 5, 7], category: "halogen", mass: 126.90, electronegativity: 2.66 },
+            { symbol: "Xe", name: "Xenón", valences: [2, 4, 6, 8], category: "noble", mass: 131.29, electronegativity: 2.6 },
+            { symbol: "Cs", name: "Cesio", valences: [1], category: "alkali", mass: 132.91, electronegativity: 0.79 },
+            { symbol: "Ba", name: "Bario", valences: [2], category: "alkaline", mass: 137.33, electronegativity: 0.89 },
+            // Lantánidos
+            { symbol: "La", name: "Lantano", valences: [3], category: "lanthanide", mass: 138.91, electronegativity: 1.1 },
+            { symbol: "Ce", name: "Cerio", valences: [3, 4], category: "lanthanide", mass: 140.12, electronegativity: 1.12 },
+            { symbol: "Pr", name: "Praseodimio", valences: [3], category: "lanthanide", mass: 140.91, electronegativity: 1.13 },
+            { symbol: "Nd", name: "Neodimio", valences: [3], category: "lanthanide", mass: 144.24, electronegativity: 1.14 },
+            { symbol: "Pm", name: "Prometio", valences: [3], category: "lanthanide", mass: 145, electronegativity: 1.13 },
+            { symbol: "Sm", name: "Samario", valences: [3], category: "lanthanide", mass: 150.36, electronegativity: 1.17 },
+            { symbol: "Eu", name: "Europio", valences: [2, 3], category: "lanthanide", mass: 151.96, electronegativity: 1.2 },
+            { symbol: "Gd", name: "Gadolinio", valences: [3], category: "lanthanide", mass: 157.25, electronegativity: 1.2 },
+            { symbol: "Tb", name: "Terbio", valences: [3], category: "lanthanide", mass: 158.93, electronegativity: 1.2 },
+            { symbol: "Dy", name: "Disprosio", valences: [3], category: "lanthanide", mass: 162.50, electronegativity: 1.22 },
+            { symbol: "Ho", name: "Holmio", valences: [3], category: "lanthanide", mass: 164.93, electronegativity: 1.23 },
+            { symbol: "Er", name: "Erbio", valences: [3], category: "lanthanide", mass: 167.26, electronegativity: 1.24 },
+            { symbol: "Tm", name: "Tulio", valences: [3], category: "lanthanide", mass: 168.93, electronegativity: 1.25 },
+            { symbol: "Yb", name: "Iterbio", valences: [2, 3], category: "lanthanide", mass: 173.05, electronegativity: 1.1 },
+            { symbol: "Lu", name: "Lutecio", valences: [3], category: "lanthanide", mass: 174.97, electronegativity: 1.27 },
+            // Continuación tabla principal
+            { symbol: "Hf", name: "Hafnio", valences: [4], category: "transition", mass: 178.49, electronegativity: 1.3 },
+            { symbol: "Ta", name: "Tantalio", valences: [5], category: "transition", mass: 180.95, electronegativity: 1.5 },
+            { symbol: "W", name: "Wolframio", valences: [6], category: "transition", mass: 183.84, electronegativity: 2.36 },
+            { symbol: "Re", name: "Renio", valences: [4, 7], category: "transition", mass: 186.21, electronegativity: 1.9 },
+            { symbol: "Os", name: "Osmio", valences: [4], category: "transition", mass: 190.23, electronegativity: 2.2 },
+            { symbol: "Ir", name: "Iridio", valences: [3, 4], category: "transition", mass: 192.22, electronegativity: 2.20 },
+            { symbol: "Pt", name: "Platino", valences: [2, 4], category: "transition", mass: 195.08, electronegativity: 2.28 },
+            { symbol: "Au", name: "Oro", valences: [1, 3], category: "transition", mass: 196.97, electronegativity: 2.54 },
+            { symbol: "Hg", name: "Mercurio", valences: [1, 2], category: "transition", mass: 200.59, electronegativity: 2.00 },
+            { symbol: "Tl", name: "Talio", valences: [1, 3], category: "metal", mass: 204.38, electronegativity: 1.62 },
+            { symbol: "Pb", name: "Plomo", valences: [2, 4], category: "metal", mass: 207.2, electronegativity: 2.33 },
+            { symbol: "Bi", name: "Bismuto", valences: [3, 5], category: "metal", mass: 208.98, electronegativity: 2.02 },
+            { symbol: "Po", name: "Polonio", valences: [2, 4], category: "metalloid", mass: 209, electronegativity: 2.0 },
+            { symbol: "At", name: "Ástato", valences: [-1, 1], category: "halogen", mass: 210, electronegativity: 2.2 },
+            { symbol: "Rn", name: "Radón", valences: [2], category: "noble", mass: 222, electronegativity: null },
+            { symbol: "Fr", name: "Francio", valences: [1], category: "alkali", mass: 223, electronegativity: 0.7 },
+            { symbol: "Ra", name: "Radio", valences: [2], category: "alkaline", mass: 226, electronegativity: 0.9 },
+            // Actínidos
+            { symbol: "Ac", name: "Actinio", valences: [3], category: "actinide", mass: 227, electronegativity: 1.1 },
+            { symbol: "Th", name: "Torio", valences: [4], category: "actinide", mass: 232.04, electronegativity: 1.3 },
+            { symbol: "Pa", name: "Protactinio", valences: [5], category: "actinide", mass: 231.04, electronegativity: 1.5 },
+            { symbol: "U", name: "Uranio", valences: [4, 6], category: "actinide", mass: 238.03, electronegativity: 1.38 },
+            { symbol: "Np", name: "Neptunio", valences: [5], category: "actinide", mass: 237, electronegativity: 1.36 },
+            { symbol: "Pu", name: "Plutonio", valences: [4, 6], category: "actinide", mass: 244, electronegativity: 1.28 },
+            { symbol: "Am", name: "Americio", valences: [3, 4], category: "actinide", mass: 243, electronegativity: 1.3 },
+            { symbol: "Cm", name: "Curio", valences: [3], category: "actinide", mass: 247, electronegativity: 1.3 },
+            { symbol: "Bk", name: "Berkelio", valences: [3, 4], category: "actinide", mass: 247, electronegativity: 1.3 },
+            { symbol: "Cf", name: "Californio", valences: [3], category: "actinide", mass: 251, electronegativity: 1.3 },
+            { symbol: "Es", name: "Einstenio", valences: [3], category: "actinide", mass: 252, electronegativity: 1.3 },
+            { symbol: "Fm", name: "Fermio", valences: [3], category: "actinide", mass: 257, electronegativity: 1.3 },
+            { symbol: "Md", name: "Mendelevio", valences: [3], category: "actinide", mass: 258, electronegativity: 1.3 },
+            { symbol: "No", name: "Nobelio", valences: [3], category: "actinide", mass: 259, electronegativity: 1.3 },
+            { symbol: "Lr", name: "Laurencio", valences: [3], category: "actinide", mass: 262, electronegativity: 1.3 },
+            // Elementos superpesados
+            { symbol: "Rf", name: "Rutherfordio", valences: [4], category: "transition", mass: 267, electronegativity: null },
+            { symbol: "Db", name: "Dubnio", valences: [5], category: "transition", mass: 268, electronegativity: null },
+            { symbol: "Sg", name: "Seaborgio", valences: [6], category: "transition", mass: 269, electronegativity: null },
+            { symbol: "Bh", name: "Bohrio", valences: [7], category: "transition", mass: 270, electronegativity: null },
+            { symbol: "Hs", name: "Hassio", valences: [8], category: "transition", mass: 277, electronegativity: null },
+            { symbol: "Mt", name: "Meitnerio", valences: [6], category: "transition", mass: 278, electronegativity: null },
+            { symbol: "Ds", name: "Darmstadtio", valences: [6], category: "transition", mass: 281, electronegativity: null },
+            { symbol: "Rg", name: "Roentgenio", valences: [3], category: "transition", mass: 282, electronegativity: null },
+            { symbol: "Cn", name: "Copernicio", valences: [2], category: "transition", mass: 285, electronegativity: null },
+            { symbol: "Nh", name: "Nihonio", valences: [1], category: "metal", mass: 286, electronegativity: null },
+            { symbol: "Fl", name: "Flerovio", valences: [2], category: "metal", mass: 289, electronegativity: null },
+            { symbol: "Mc", name: "Moscovio", valences: [1], category: "metal", mass: 290, electronegativity: null },
+            { symbol: "Lv", name: "Livermorio", valences: [2], category: "metal", mass: 293, electronegativity: null },
+            { symbol: "Ts", name: "Tenesino", valences: [1], category: "halogen", mass: 294, electronegativity: null },
+            { symbol: "Og", name: "Oganesón", valences: [0], category: "noble", mass: 294, electronegativity: null }
+    
+        ];
+
+        // Variables de estado
+        let selectedElements = [];
+        let bondMode = false; // Variable para controlar el modo enlaces
+
+        // Información extendida de los elementos (copiada del otro código)
+        const infoExtendida = {
+            "Hidrógeno": `
+                <p><strong>¿QUÉ ES EL HIDRÓGENO?</strong></p>
+                <p>El hidrógeno es el primer elemento de la tabla periódica. Es el elemento químico más ligero que existe, su átomo está formado por un protón y un electrón y es estable en forma de molécula diatómica (H2). En condiciones normales se encuentra en estado gaseoso, y es insípido, incoloro e inodoro. En la Tierra es muy abundante, constituye aproximadamente el 75 % de la materia del Universo, pero se encuentra combinado con otros elementos como el oxígeno formando moléculas de agua, o al carbono, formando compuestos orgánicos. Por tanto, no es un combustible que pueda tomarse directamente de la naturaleza, sino que es un vector energético (como la electricidad) y por ello se tiene que "fabricar."</p>
+                <p><strong>¿CÓMO SE PRODUCE EL HIDRÓGENO?</strong></p>
+                <p>Existen distintos métodos de producción de hidrógeno. Se puede producir a partir de distintas materias primas, distintas fuentes de energía y por distintos procedimientos. Según sean la materia prima y la fuente energética utilizada para producirlo se podrá hablar de procesos 100% renovables, 100% fósiles o híbridos en un determinado porcentaje. El hidrógeno puede ser producido localmente, en grandes instalaciones centrales o en pequeñas unidades distribuidas ubicadas en o cerca del punto de uso. Esto significa que todas las zonas, incluso áreas remotas, puedan convertirse en productores de energía. Cuando el hidrógeno es producido usando fuentes de energía renovables y se aprovecha para la alimentación eléctrica de las pilas de combustible de alta eficiencia, los beneficios medioambientales del hidrógeno son aún mayores. Además, el hidrógeno puede ser producido y almacenado utilizando los excedentes de energía producida por las energías renovables, como la solar, la eólica, la hidráulica, …. Un kilogramo de hidrógeno puede liberar más energía que un kilogramo de cualquier otro combustible (casi el triple que la gasolina o el gas natural), y para liberar esa energía no emite nada de dióxido de carbono, tan sólo vapor de agua, por lo que el impacto ambiental es nulo.</p>
+                <p><strong>¿CÓMO SE ALMACENA EL HIDRÓGENO?</strong></p>
+                <p>Una de las aplicaciones más importantes del hidrógeno es su uso como almacenamiento de energía, éste es un punto clave para su introducción en el mercado y uno de los principales valor y ventaja que tiene como vector energético. El hidrógeno se caracteriza por tener una alta densidad energética por unidad de masa pero su mayor problema es que ocupa mucho volumen.</p>
+                <p><strong>¿QUÉ APLICACIONES TIENE EL HIDRÓGENO?</strong></p>
+                <p>El hidrógeno se ha utilizado con seguridad durante muchas décadas en una amplia gama de aplicaciones, incluyendo las industrias de la alimentación, metal, vidrio y química. La industria mundial del hidrógeno está bien establecida y produce más de 50 millones de toneladas de hidrógeno al año. Con respecto a la energía, el hidrógeno puede ser utilizado como combustible para el transporte, y para generar electricidad mediante pilas de combustible. Un kilogramo de hidrógeno libera más energía que cualquier otro combustible (casi el triple de la gasolina o gas natural), y para liberar esa energía no emite dióxido de carbono, sólo vapor de agua, por lo que el impacto ambiental es nulo. Un vehículo de motor de combustión interna de hidrógeno (MCI) utiliza un motor de combustión interna convencional modificado para la combustión de hidrógeno gaseoso. Los vehículos de MCI de hidrógeno son un 30% más eficientes comparados con los vehículos de gasolina, y funcionan bien en todas las condiciones climáticas, incluso a bajas temperaturas.</p>
+            `,
+            "Helio": `
+                <p><strong>¿QUÉ ES EL HELIO?</strong></p>
+                <p>El helio es un gas noble que pertenece a la tabla periódica con el símbolo He y el número atómico 2. Es el segundo elemento más ligero y abundante en el universo, después del hidrógeno. Aunque no es muy común en la atmósfera terrestre, es esencial para muchas aplicaciones tecnológicas y científicas.</p>
+                <p><strong>PROPIEDADES DEL HELIO:</strong></p>
+                <ul>
+                    <li>Incoloro, inodoro e insípido: El helio no tiene color, sabor ni olor, lo que lo hace bastante inerte en términos de reacción con otros elementos.</li>
+                    <li>No inflamable: A diferencia del hidrógeno, que es altamente inflamable, el helio no arde, lo que lo hace más seguro en ciertas aplicaciones, como en globos o dirigibles.</li>
+                    <li>Bajo punto de ebullición: Tiene el punto de ebullición más bajo de todos los elementos, alrededor de -268.93 °C (4.2 K), lo que significa que se encuentra en estado gaseoso en la mayoría de las condiciones de temperatura y presión en la Tierra.</li>
+                    <li>Gas noble: Esto significa que tiene una capa de electrones completa en su nivel más externo, lo que lo hace extremadamente estable y poco reactivo con otros elementos.</li>
+                </ul>
+                <p><strong>FUENTES DE HELIO:</strong></p>
+                <p>El helio se obtiene principalmente de depósitos naturales de gas natural, en donde se encuentra en pequeñas concentraciones. El helio se libera durante la extracción de gas natural, especialmente en lugares como los Estados Unidos, Qatar y Rusia.</p>
+                <p><strong>USOS DEL HELIO:</strong></p>
+                <ul>
+                    <li>Aplicaciones científicas y médicas: El helio se usa en criogenia, especialmente en la refrigeración de imanes superconductores en máquinas como los resonadores magnéticos (RMN) y los imanes de aceleradores de partículas. También se usa para mantener temperaturas extremadamente bajas en experimentos científicos.</li>
+                    <li>Llenado de globos y dirigibles: Debido a que el helio no es inflamable, se utiliza para inflar globos y dirigibles en lugar de hidrógeno, que sí es inflamable.</li>
+                    <li>Mezcla de gases para buceo: El helio se utiliza en la mezcla de gases para buzos en profundidades extremas, debido a que reduce los efectos de la narcósis por nitrógeno.</li>
+                    <li>Industria espacial: El helio se usa como gas de presión en los sistemas de combustible de cohetes y para purgar sistemas de oxígeno.</li>
+                </ul>
+                <p><strong>POR QUÉ ES IMPORTANTE EL HELIO</strong></p>
+                <p>Aunque es un elemento que abunda en el universo, en la Tierra es relativamente escaso. Su utilización en tecnologías avanzadas, como la investigación espacial y médica, hace que sea un recurso valioso y que se deba cuidar, ya que las reservas de helio en la Tierra están en disminución.</p>
+            `,
+            "Litio": `
+                <p><strong>¿QUÉ ES EL LITIO?</strong></p>
+                <p>El litio es un elemento químico con el símbolo Li y el número atómico 3. Es el metal más ligero y pertenece al grupo de los metales alcalinos. Es un metal blando, plateado y altamente reactivo, sobre todo con el agua y el aire. En la naturaleza, no se encuentra libre debido a su reactividad, sino en compuestos como la espodumena y la salmuera.</p>
+                <p><strong>¿CÓMO SE PRODUCE?</strong></p>
+                <p>El litio se obtiene principalmente de dos formas:</p>
+                <ol>
+                    <li>De minerales sólidos (como la espodumena y lepidolita):
+                        <ul>
+                            <li>Extracción: Los minerales se extraen de minas a cielo abierto o subterráneas.</li>
+                            <li>Procesamiento: Los minerales se trituran y se someten a procesos químicos para extraer el litio.</li>
+                        </ul>
+                    </li>
+                    <li>De salmueras (como las encontradas en salares):
+                        <ul>
+                            <li>Evaporación: Las salmueras se bombean a estanques de evaporación donde el agua se evapora, dejando atrás sales concentradas de litio.</li>
+                            <li>Purificación: Las sales se procesan para obtener litio de alta pureza.</li>
+                        </ul>
+                    </li>
+                </ol>
+                <p><strong>¿PARA QUÉ SE UTILIZA?</strong></p>
+                <p>El litio tiene una amplia gama de aplicaciones, incluyendo:</p>
+                <ul>
+                    <li>Baterías: Es un componente clave en las baterías recargables de iones de litio utilizadas en dispositivos electrónicos, vehículos eléctricos y almacenamiento de energía.</li>
+                    <li>Industria del vidrio y la cerámica: Se utiliza para mejorar la resistencia y durabilidad del vidrio y la cerámica.</li>
+                    <li>Medicina: Se usa en el tratamiento de trastornos bipolares y otras condiciones psiquiátricas.</li>
+                </ul>
+            `,
+            "Berilio": `
+                <p><strong>¿QUÉ ES EL BERILIO?</strong></p>
+                <p>El berilio es un elemento químico con número atómico 4 y símbolo Be. Es un metal alcalinotérreo de color gris plateado, ligero, muy duro y quebradizo. Tiene una densidad baja, un alto punto de fusión y es tóxico si se inhala. Es conocido por ser muy ligero pero resistente, y se encuentra en la naturaleza principalmente en minerales como la berilina y la crisoberila.</p>
+                <p><strong>¿CÓMO SE PRODUCE?</strong></p>
+                <p>El berilio no se encuentra en estado puro en la naturaleza, sino en minerales. Para obtenerlo:</p>
+                <ol>
+                    <li>Extracción: Se extrae principalmente de un mineral llamado berilo (Be₃ Al₂ (Si₆ O₁₈).</li>
+                    <li>Purificación: El mineral se tritura y se trata con productos químicos como ácido sulfúrico o fluoruro de hidrógeno.</li>
+                    <li>Electrólisis o reducción química: Luego se obtiene el berilio metálico a través de procesos como la reducción del fluoruro de berilio con magnesio o mediante electrólisis.</li>
+                </ol>
+                <p><strong>¿CÓMO SE ALMACENA?</strong></p>
+                <p>Debido a su toxicidad (puede causar una enfermedad llamada beriliosis si se inhalan sus partículas), el berilio debe almacenarse con medidas de seguridad estrictas:</p>
+                <ul>
+                    <li>En contenedores cerrados herméticamente, resistentes a la corrosión.</li>
+                    <li>En áreas ventiladas, evitando el contacto con ácidos.</li>
+                    <li>Usando protección personal (guantes, mascarillas) al manipularlo. Además, se almacena lejos de fuentes de calor o materiales con los que pueda reaccionar.</li>
+                </ul>
+                <p><strong>¿QUÉ APLICACIONES TIENE?</strong></p>
+                <p>El berilio tiene usos muy especializados debido a sus propiedades únicas:</p>
+                <ul>
+                    <li>Aeroespacial y defensa: En componentes de satélites, misiles y aviones por su ligereza y resistencia.</li>
+                    <li>Reactores nucleares: Actúa como moderador de neutrones.</li>
+                    <li>Industria electrónica: Aleado con cobre (aleación cobre-berilio) para fabricar herramientas, resortes y contactos eléctricos de alta conductividad.</li>
+                    <li>Radiografía médica y equipos científicos: En ventanas de rayos X por su transparencia a radiación.</li>
+                    <li>Joyería: Algunos minerales que contienen berilio, como el esmeralda, se usan como gemas.</li>
+                </ul>
+            `,
+            "Boro": `
+                <p><strong>¿QUÉ ES EL BORO?</strong></p>
+                <p>El boro es un elemento químico con número atómico 5 y símbolo B. Es un metaloide, es decir, tiene propiedades intermedias entre metales y no metales. En su forma pura es un sólido oscuro, quebradizo y duro. No se encuentra libre en la naturaleza, pero sí en compuestos como boratos y ácido bórico. Es esencial en pequeñas cantidades para plantas y tiene múltiples usos industriales.</p>
+                <p><strong>¿CÓMO SE PRODUCE?</strong></p>
+                <p>El boro se obtiene a partir de minerales como:</p>
+                <ul>
+                    <li>Bórax (Na₂ B₄O₇ · 10H₂O)</li>
+                    <li>Kernita (Na₂ B₄O₇ · 4H₂O)</li>
+                </ul>
+                <p>Proceso de producción:</p>
+                <ol>
+                    <li>Extracción del mineral y purificación.</li>
+                    <li>Conversión a trióxido de boro (B₂O₃).</li>
+                    <li>Reducción química con magnesio o aluminio para obtener boro elemental. También puede obtenerse mediante procesos más avanzados para obtener boro ultrapuro para la industria electrónica.</li>
+                </ol>
+                <p><strong>¿CÓMO SE ALMACENA?</strong></p>
+                <p>El boro se almacena de manera sencilla, ya que no es tan reactivo ni volátil:</p>
+                <ul>
+                    <li>En recipientes herméticos y secos, ya que puede absorber humedad.</li>
+                    <li>Lejos de ácidos fuertes, que pueden reaccionar con él.</li>
+                    <li>En forma sólida, no es tóxico, pero se recomienda evitar la inhalación de polvo.</li>
+                </ul>
+                <p><strong>¿QUÉ APLICACIONES TIENE?</strong></p>
+                <p>El boro tiene aplicaciones muy variadas por sus propiedades únicas:</p>
+                <ul>
+                    <li>Vidrios y cerámicas: Se usa en la fabricación de vidrio resistente al calor (vidrio de borosilicato, como el Pyrex).</li>
+                    <li>Detergentes y productos de limpieza: El bórax es un componente común.</li>
+                    <li>Agricultura: Fertilizantes con boro, ya que es nutriente esencial para plantas.</li>
+                    <li>Medicina: Antisépticos y en tratamientos para infecciones oculares (ácido bórico).</li>
+                    <li>Industria nuclear: El boro absorbe neutrones, usado como controlador en reactores nucleares.</li>
+                    <li>Electrónica: Como dopante en semiconductores (especialmente silicio).</li>
+                    <li>Materiales resistentes: En fibra de boro para materiales compuestos de alta resistencia (industria aeroespacial y deportiva).</li>
+                </ul>
+            `,
+            "Carbono": `
+                <p><strong>¿QUÉ ES EL CARBONO?</strong></p>
+                <p>El carbono es un elemento químico con número atómico 6 y símbolo C. Es un no metal esencial para la vida, ya que es la base de todas las moléculas orgánicas. En la naturaleza se encuentra en varias formas (alótropos), como:</p>
+                <ul>
+                    <li>Grafito (suave y conductor)</li>
+                    <li>Diamante (duro y aislante)</li>
+                    <li>Fullerenos y grafeno (estructuras recientes y muy avanzadas)</li>
+                </ul>
+                <p>También forma parte de compuestos como dióxido de carbono (CO₂) y carbonatos. Es uno de los elementos más abundantes del universo y fundamental para la química orgánica.</p>
+                <p><strong>¿CÓMO SE PRODUCE?</strong></p>
+                <p>El carbono se puede obtener de varias formas:</p>
+                <ol>
+                    <li>Naturalmente: Se encuentra en minas de carbón, depósitos de grafito, y como componente del petróleo y gas natural.</li>
+                    <li>Industrialmente:
+                        <ul>
+                            <li>Carbón vegetal: Se produce calentando madera sin oxígeno (pirólisis).</li>
+                            <li>Grafito sintético: Mediante el calentamiento de coque (residuo del petróleo) a altas temperaturas.</li>
+                            <li>Diamante sintético: Alta presión y temperatura sobre grafito o mediante métodos químicos (CVD).</li>
+                        </ul>
+                    </li>
+                </ol>
+                <p><strong>¿CÓMO SE ALMACENA?</strong></p>
+                <p>El carbono es bastante estable y seguro de almacenar:</p>
+                <ul>
+                    <li>En ambientes secos, especialmente si está en polvo fino.</li>
+                    <li>Lejos de fuentes de ignición, ya que algunas formas pueden arder (como el carbón).</li>
+                    <li>En recipientes cerrados si está en forma de polvo o en productos químicos (ej: disuelto).</li>
+                </ul>
+                <p><strong>¿QUÉ APLICACIONES TIENE?</strong></p>
+                <p>El carbono tiene muchísimas aplicaciones en distintas formas:</p>
+                <ul>
+                    <li>Combustibles: Carbón, petróleo y gas natural (compuestos de carbono) son fuentes de energía.</li>
+                    <li>Materiales:
+                        <ul>
+                            <li>Grafito: Lápices, lubricantes, electrodos.</li>
+                            <li>Diamante: Joyería y herramientas de corte.</li>
+                            <li>Fibra de carbono: Material ligero y resistente (usado en autos, aviones, deportes).</li>
+                        </ul>
+                    </li>
+                    <li>Electrónica:
+                        <ul>
+                            <li>Grafeno: Material conductor ultra delgado (en desarrollo).</li>
+                            <li>Electrodos en baterías y supercondensadores.</li>
+                        </ul>
+                    </li>
+                    <li>Industria química: Base de plásticos, medicamentos, colorantes, etc.</li>
+                    <li>Biología y medicina: El carbono es parte del ADN, proteínas, azúcares y más. Sin carbono, no hay vida.</li>
+                </ul>
+            `
+        };
+
+        // Inicializar tabla periódica
+        function initPeriodicTable() {
+            const table = document.getElementById("periodic-table");
+            table.innerHTML = "";
+
+            const positions = {
+                "H": { row: 1, col: 1 },
+                "He": { row: 1, col: 18 },
+                "Li": { row: 2, col: 1 },
+                "Be": { row: 2, col: 2 },
+                "B": { row: 2, col: 13 },
+                "C": { row: 2, col: 14 },
+                "N": { row: 2, col: 15 },
+                "O": { row: 2, col: 16 },
+                "F": { row: 2, col: 17 },
+                "Ne": { row: 2, col: 18 },
+                "Na": { row: 3, col: 1 },
+                "Mg": { row: 3, col: 2 },
+                "Al": { row: 3, col: 13 },
+                "Si": { row: 3, col: 14 },
+                "P": { row: 3, col: 15 },
+                "S": { row: 3, col: 16 },
+                "Cl": { row: 3, col: 17 },
+                "Ar": { row: 3, col: 18 },
+                "K": { row: 4, col: 1 },
+                "Ca": { row: 4, col: 2 },
+                "Sc": { row: 4, col: 3 },
+                "Ti": { row: 4, col: 4 },
+                "V": { row: 4, col: 5 },
+                "Cr": { row: 4, col: 6 },
+                "Mn": { row: 4, col: 7 },
+                "Fe": { row: 4, col: 8 },
+                "Co": { row: 4, col: 9 },
+                "Ni": { row: 4, col: 10 },
+                "Cu": { row: 4, col: 11 },
+                "Zn": { row: 4, col: 12 },
+                "Ga": { row: 4, col: 13 },
+                "Ge": { row: 4, col: 14 },
+                "As": { row: 4, col: 15 },
+                "Se": { row: 4, col: 16 },
+                "Br": { row: 4, col: 17 },
+                "Kr": { row: 4, col: 18 },
+                "Rb": { row: 5, col: 1 },
+                "Sr": { row: 5, col: 2 },
+                "Y": { row: 5, col: 3 },
+                "Zr": { row: 5, col: 4 },
+                "Nb": { row: 5, col: 5 },
+                "Mo": { row: 5, col: 6 },
+                "Tc": { row: 5, col: 7 },
+                "Ru": { row: 5, col: 8 },
+                "Rh": { row: 5, col: 9 },
+                "Pd": { row: 5, col: 10 },
+                "Ag": { row: 5, col: 11 },
+                "Cd": { row: 5, col: 12 },
+                "In": { row: 5, col: 13 },
+                "Sn": { row: 5, col: 14 },
+                "Sb": { row: 5, col: 15 },
+                "Te": { row: 5, col: 16 },
+                "I": { row: 5, col: 17 },
+                "Xe": { row: 5, col: 18 },
+                "Cs": { row: 6, col: 1 },
+                "Ba": { row: 6, col: 2 },
+                "La": { row: 9, col: 4 },
+                "Ce": { row: 9, col: 5 },
+                "Pr": { row: 9, col: 6 },
+                "Nd": { row: 9, col: 7 },
+                "Pm": { row: 9, col: 8 },
+                "Sm": { row: 9, col: 9 },
+                "Eu": { row: 9, col: 10 },
+                "Gd": { row: 9, col: 11 },
+                "Tb": { row: 9, col: 12 },
+                "Dy": { row: 9, col: 13 },
+                "Ho": { row: 9, col: 14 },
+                "Er": { row: 9, col: 15 },
+                "Tm": { row: 9, col: 16 },
+                "Yb": { row: 9, col: 17 },
+                "Lu": { row: 9, col: 18 },
+                "Fr": { row: 7, col: 1 },
+                "Ra": { row: 7, col: 2 },
+                "Ac": { row: 10, col: 4 },
+                "Th": { row: 10, col: 5 },
+                "Pa": { row: 10, col: 6 },
+                "U": { row: 10, col: 7 },
+                "Np": { row: 10, col: 8 },
+                "Pu": { row: 10, col: 9 },
+                "Am": { row: 10, col: 10 },
+                "Cm": { row: 10, col: 11 },
+                "Bk": { row: 10, col: 12 },
+                "Cf": { row: 10, col: 13 },
+                "Es": { row: 10, col: 14 },
+                "Fm": { row: 10, col: 15 },
+                "Md": { row: 10, col: 16 },
+                "No": { row: 10, col: 17 },
+                "Lr": { row: 10, col: 18 },
+                "Hf": { row: 6, col: 4 },
+                "Ta": { row: 6, col: 5 },
+                "W": { row: 6, col: 6 },
+                "Re": { row: 6, col: 7 },
+                "Os": { row: 6, col: 8 },
+                "Ir": { row: 6, col: 9 },
+                "Pt": { row: 6, col: 10 },
+                "Au": { row: 6, col: 11 },
+                "Hg": { row: 6, col: 12 },
+                "Tl": { row: 6, col: 13 },
+                "Pb": { row: 6, col: 14 },
+                "Bi": { row: 6, col: 15 },
+                "Po": { row: 6, col: 16 },
+                "At": { row: 6, col: 17 },
+                "Rn": { row: 6, col: 18 },
+                "Fr": { row: 7, col: 1 },
+                "Ra": { row: 7, col: 2 },
+                "Ac": { row: 10, col: 4 },
+                "Th": { row: 10, col: 5 },
+                "Pa": { row: 10, col: 6 },
+                "U": { row: 10, col: 7 },
+                "Np": { row: 10, col: 8 },
+                "Pu": { row: 10, col: 9 },
+                "Am": { row: 10, col: 10 },
+                "Cm": { row: 10, col: 11 },
+                "Bk": { row: 10, col: 12 },
+                "Cf": { row: 10, col: 13 },
+                "Es": { row: 10, col: 14 },
+                "Fm": { row: 10, col: 15 },
+                "Md": { row: 10, col: 16 },
+                "No": { row: 10, col: 17 },
+                "Lr": { row: 10, col: 18 },
+                "Rf": { row: 7, col: 4 },
+                "Db": { row: 7, col: 5 },
+                "Sg": { row: 7, col: 6 },
+                "Bh": { row: 7, col: 7 },
+                "Hs": { row: 7, col: 8 },
+                "Mt": { row: 7, col: 9 },
+                "Ds": { row: 7, col: 10 },
+                "Rg": { row: 7, col: 11 },
+                "Cn": { row: 7, col: 12 },
+                "Nh": { row: 7, col: 13 },
+                "Fl": { row: 7, col: 14 },
+                "Mc": { row: 7, col: 15 },
+                "Lv": { row: 7, col: 16 },
+                "Ts": { row: 7, col: 17 },
+                "Og": { row: 7, col: 18 }
+            };
+
+            elements.forEach((element) => {
+                const el = document.createElement("div");
+                el.className = `element ${element.category}`;
+                el.innerHTML = `
+                    <div class="number">${elements.indexOf(element) + 1}</div>
+                    <div class="symbol">${element.symbol}</div>
+                    <div class="valences">${element.valences.join(",")}</div>
+                `;
+                el.setAttribute("data-symbol", element.symbol);
+                el.setAttribute("data-name", element.name);
+                el.setAttribute("data-mass", element.mass);
+                el.setAttribute("data-electronegativity", element.electronegativity || "N/A");
+                el.setAttribute("data-number", (elements.indexOf(element) + 1).toString());
+
+                // Asignar posición en la cuadrícula
+                const position = positions[element.symbol];
+                if (position) {
+                    el.style.gridRow = position.row;
+                    el.style.gridColumn = position.col;
+                }
+
+                // Modificar el event listener para manejar ambos modos
+                el.addEventListener("click", () => {
+                    if (bondMode) {
+                        toggleElement(element);
+                    } else {
+                        showElementInfo(element);
+                    }
+                });
+
+                table.appendChild(el);
+            });
+
+            // Llamar al nuevo buscador después de crear todos los elementos
+            buscadorPeriodico();
+        }
+
+        // Seleccionar/deseleccionar elemento
+        function toggleElement(element) {
+            if (bondMode) {
+                // Permitir agregar el mismo elemento varias veces
+                selectedElements.push(element);
+            } else {
+                // Modo normal: alternar selección única
+                const index = selectedElements.findIndex(el => el.symbol === element.symbol);
+                if (index === -1) {
+                    selectedElements.push(element);
+                } else {
+                    selectedElements.splice(index, 1);
+                }
+            }
+            updateSelectedElements();
+            updateElementStyles();
+        }
+
+        // Actualizar elementos seleccionados
+        function updateSelectedElements() {
+            const container = document.getElementById("selected-elements");
+            container.innerHTML = "";
+            selectedElements.forEach((element, idx) => {
+                const el = document.createElement("div");
+                el.className = "selected-element";
+                el.innerHTML = `
+                    ${element.symbol}
+                    <button onclick="removeElementAt(${idx})">×</button>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // Eliminar elemento seleccionado por índice
+        function removeElementAt(idx) {
+            selectedElements.splice(idx, 1);
+            updateSelectedElements();
+            updateElementStyles();
+        }
+
+        // Actualizar estilos de elementos
+        function updateElementStyles() {
+            document.querySelectorAll(".element").forEach(el => {
+                const symbol = el.getAttribute("data-symbol");
+                // Resalta si el símbolo está al menos una vez en la selección
+                if (selectedElements.some(e => e.symbol === symbol)) {
+                    el.classList.add("selected");
+                } else {
+                    el.classList.remove("selected");
+                }
+            });
+        }
+
+        // Determinar el tipo de enlace entre dos elementos
+        function determineBondType(element1, element2) {
+            // Si ambos son metales, probablemente enlace metálico
+            if ((element1.category === "alkali" || element1.category === "alkaline" || 
+                 element1.category === "transition" || element1.category === "metal" ||
+                 element1.category === "lanthanide" || element1.category === "actinide") &&
+                (element2.category === "alkali" || element2.category === "alkaline" || 
+                 element2.category === "transition" || element2.category === "metal" ||
+                 element2.category === "lanthanide" || element2.category === "actinide")) {
+                return "metallic";
+            }
+            
+            // Si uno es metal y el otro no metal, probablemente iónico
+            if (((element1.category === "alkali" || element1.category === "alkaline" || 
+                  element1.category === "transition" || element1.category === "metal" ||
+                  element1.category === "lanthanide" || element1.category === "actinide") &&
+                 (element2.category === "nonmetal" || element2.category === "halogen" || 
+                  element2.category === "metalloid")) ||
+                ((element2.category === "alkali" || element2.category === "alkaline" || 
+                  element2.category === "transition" || element2.category === "metal" ||
+                  element2.category === "lanthanide" || element2.category === "actinide") &&
+                 (element1.category === "nonmetal" || element1.category === "halogen" || 
+                  element1.category === "metalloid"))) {
+                return "ionic";
+            }
+            
+            // Si ambos son no metales, probablemente covalente
+            if ((element1.category === "nonmetal" || element1.category === "halogen" || 
+                 element1.category === "metalloid" || element1.category === "noble") &&
+                (element2.category === "nonmetal" || element2.category === "halogen" || 
+                 element2.category === "metalloid" || element2.category === "noble")) {
+                return "covalent";
+            }
+            
+            // Por defecto, covalente
+            return "covalent";
+        }
+
+        // Obtener descripción del tipo de enlace
+        function getBondDescription(bondType) {
+            switch(bondType) {
+                case "ionic":
+                    return "Enlace iónico: Transferencia de electrones de un átomo a otro, formando iones con cargas opuestas que se atraen. Típico entre metales y no metales.";
+                case "covalent":
+                    return "Enlace covalente: Compartición de electrones entre átomos. Típico entre no metales.";
+                case "metallic":
+                    return "Enlace metálico: Los electrones de valencia son compartidos entre todos los átomos, formando un 'mar de electrones'. Característico de los metales.";
+                default:
+                    return "Tipo de enlace no determinado.";
+            }
+        }
+
+        // Calcular diferencia de electronegatividad
+        function calculateElectronegativityDifference(element1, element2) {
+            if (!element1.electronegativity || !element2.electronegativity) {
+                return null;
+            }
+            return Math.abs(element1.electronegativity - element2.electronegativity);
+        }
+
+        // Función mejorada para encontrar compuestos posibles (incluyendo H₂O)
+        function findPossibleCompounds(elements) {
+            const compounds = [];
+            const commonCompounds = {
+                "H2O": "Agua (común)",
+                "CO2": "Dióxido de carbono (común)",
+                "NaCl": "Cloruro de sodio (común)",
+                "CH4": "Metano (común)",
+                "NH3": "Amoníaco (común)",
+                "HCl": "Ácido clorhídrico (común)"
+            };
+
+            // Combinaciones binarias
+            if (elements.length === 2) {
+                const [el1, el2] = elements;
+
+                // Considerar múltiplos para encontrar combinaciones comunes
+                for (let mult1 = 1; mult1 <= 4; mult1++) {
+                    for (let mult2 = 1; mult2 <= 4; mult2++) {
+                        for (const v1 of el1.valences) {
+                            for (const v2 of el2.valences) {
+                                // Verificar si las valencias son compatibles considerando múltiplos
+                                if (mult1 * v1 + mult2 * v2 === 0) {
+                                    const gcd = greatestCommonDivisor(mult1, mult2);
+                                    const n1 = mult1 / gcd;
+                                    const n2 = mult2 / gcd;
+
+                                    // Crear la fórmula química
+                                    let formula = el1.symbol;
+                                    if (n1 > 1) formula += n1;
+                                    formula += el2.symbol;
+                                    if (n2 > 1) formula += n2;
+
+                                    // Determinar el tipo de enlace
+                                    const bondType = determineBondType(el1, el2);
+
+                                    // Verificar si es un compuesto común
+                                    const isCommon = commonCompounds.hasOwnProperty(formula);
+                                    const compoundName = isCommon ? commonCompounds[formula] : "";
+
+                                    // Agregar el compuesto a la lista
+                                    compounds.push({
+                                        formula: formula,
+                                        name: compoundName,
+                                        elements: [el1.symbol, el2.symbol],
+                                        valences: [
+                                            `${el1.symbol}: ${v1 > 0 ? '+' : ''}${v1} (×${mult1})`,
+                                            `${el2.symbol}: ${v2 > 0 ? '+' : ''}${v2} (×${mult2})`
+                                        ],
+                                        bondType: bondType,
+                                        isCommon: isCommon
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ordenar compuestos comunes primero
+            return compounds.sort((a, b) => b.isCommon - a.isCommon);
+        }
+
+        // Máximo común divisor
+        function greatestCommonDivisor(a, b) {
+            return b === 0 ? a : greatestCommonDivisor(b, a % b);
+        }
+
+        // Analizar enlaces posibles
+        function analyzeChemicalBonds() {
+            const resultsDiv = document.getElementById("results");
+            resultsDiv.innerHTML = "";
+        
+            if (selectedElements.length < 2) {
+                resultsDiv.innerHTML = "<p>Selecciona al menos 2 elementos para analizar sus enlaces</p>";
+                return;
+            }
+            
+            // Si hay exactamente dos o tres elementos, mostrar en popup
+            if (selectedElements.length === 2 || selectedElements.length === 3) {
+                let popupHtml = "";
+                // Analizar todos los pares posibles
+                for (let i = 0; i < selectedElements.length; i++) {
+                    for (let j = i + 1; j < selectedElements.length; j++) {
+                        const element1 = selectedElements[i];
+                        const element2 = selectedElements[j];
+                        // Determinar tipo de enlace
+                        const bondType = determineBondType(element1, element2);
+                        const bondDescription = getBondDescription(bondType);
+                        // Calcular diferencia de electronegatividad
+                        const enDiff = calculateElectronegativityDifference(element1, element2);
+                        let enDiffInfo = "";
+                        if (enDiff !== null) {
+                            enDiffInfo = `<p><strong>Diferencia de electronegatividad:</strong> ${enDiff.toFixed(2)}</p>`;
+                            if (bondType === "covalent") {
+                                if (enDiff > 0 && enDiff < 0.4) {
+                                    enDiffInfo += `<p>Enlace covalente no polar (diferencia < 0.4)</p>`;
+                                } else if (enDiff >= 0.4 && enDiff < 1.7) {
+                                    enDiffInfo += `<p>Enlace covalente polar (diferencia entre 0.4 y 1.7)</p>`;
+                                } else if (enDiff >= 1.7) {
+                                    enDiffInfo += `<p>El enlace podría considerarse iónico (diferencia ≥ 1.7)</p>`;
+                                }
+                            }
+                        }
+                        popupHtml += `
+                            <div class="bond-info ${bondType}">
+                                <h3>Enlace entre ${element1.name} (${element1.symbol}) y ${element2.name} (${element2.symbol})</h3>
+                                <p class="bond-type">Tipo de enlace: ${bondType.toUpperCase()}</p>
+                                ${enDiffInfo}
+                                <p class="bond-description">${bondDescription}</p>
+                            </div>
+                        `;
+                        // Compuestos posibles
+                        const compounds = findPossibleCompounds([element1, element2]);
+                        if (compounds.length > 0) {
+                            popupHtml += `<div class="bond-info"><h4>Compuestos posibles:</h4>`;
+                            popupHtml += `<table><tr><th>Fórmula</th><th>Nombre</th><th>Tipo de enlace</th><th>Valencias</th></tr>`;
+                            compounds.forEach(compound => {
+                                popupHtml += `<tr class="${compound.isCommon ? 'common-compound' : 'uncommon-compound'}">
+                                    <td>${compound.formula}</td>
+                                    <td>${compound.name || "-"}</td>
+                                    <td>${bondType}</td>
+                                    <td>${compound.valences.join(" | ")}</td>
+                                </tr>`;
+                            });
+                            popupHtml += `</table></div>`;
+                        }
+                    }
+                }
+                // Mostrar en popup
+                document.getElementById('popup-content').innerHTML = popupHtml;
+                document.querySelector('.popup').style.display = 'block';
+                document.querySelector('.popup-overlay').style.display = 'block';
+                return;
+            }
+        
+            // Si hay más de tres, mostrar como antes en #results
+            for (let i = 0; i < selectedElements.length; i++) {
+                for (let j = i + 1; j < selectedElements.length; j++) {
+                    const element1 = selectedElements[i];
+                    const element2 = selectedElements[j];
+                    // Determinar tipo de enlace
+                    const bondType = determineBondType(element1, element2);
+                    const bondDescription = getBondDescription(bondType);
+                    // Calcular diferencia de electronegatividad
+                    const enDiff = calculateElectronegativityDifference(element1, element2);
+                    const bondDiv = document.createElement("div");
+                    bondDiv.className = `bond-info ${bondType}`;
+                    let enDiffInfo = "";
+                    if (enDiff !== null) {
+                        enDiffInfo = `<p><strong>Diferencia de electronegatividad:</strong> ${enDiff.toFixed(2)}</p>`;
+                        if (bondType === "covalent") {
+                            if (enDiff > 0 && enDiff < 0.4) {
+                                enDiffInfo += `<p>Enlace covalente no polar (diferencia < 0.4)</p>`;
+                            } else if (enDiff >= 0.4 && enDiff < 1.7) {
+                                enDiffInfo += `<p>Enlace covalente polar (diferencia entre 0.4 y 1.7)</p>`;
+                            } else if (enDiff >= 1.7) {
+                                enDiffInfo += `<p>El enlace podría considerarse iónico (diferencia ≥ 1.7)</p>`;
+                            }
+                        }
+                    }
+                    bondDiv.innerHTML = `
+                        <h3>Enlace entre ${element1.name} (${element1.symbol}) y ${element2.name} (${element2.symbol})</h3>
+                        <p class="bond-type">Tipo de enlace: ${bondType.toUpperCase()}</p>
+                        ${enDiffInfo}
+                        <p class="bond-description">${bondDescription}</p>
+                    `;
+                    resultsDiv.appendChild(bondDiv);
+                    // Mostrar posibles compuestos binarios
+                    showPossibleCompounds(element1, element2, bondType);
+                }
+            }
+        }
+
+        // Mostrar posibles compuestos binarios
+        function showPossibleCompounds(element1, element2, bondType) {
+            const resultsDiv = document.getElementById("results");
+            const compounds = findPossibleCompounds([element1, element2]);
+            
+            if (compounds.length > 0) {
+                const compoundsDiv = document.createElement("div");
+                compoundsDiv.className = "bond-info";
+                compoundsDiv.innerHTML = `<h4>Compuestos posibles:</h4>`;
+                
+                const table = document.createElement("table");
+                table.innerHTML = `
+                    <tr>
+                        <th>Fórmula</th>
+                        <th>Nombre</th>
+                        <th>Tipo de enlace</th>
+                        <th>Valencias</th>
+                    </tr>
+                `;
+                
+                compounds.forEach(compound => {
+                    const row = document.createElement("tr");
+                    if (compound.isCommon) {
+                        row.className = "common-compound";
+                    } else {
+                        row.className = "uncommon-compound";
+                    }
+                    row.innerHTML = `
+                        <td>${compound.formula}</td>
+                        <td>${compound.name || "-"}</td>
+                        <td>${bondType}</td>
+                        <td>${compound.valences.join(" | ")}</td>
+                    `;
+                    table.appendChild(row);
+                });
+                
+                compoundsDiv.appendChild(table);
+                resultsDiv.appendChild(compoundsDiv);
+            }
+        }
+
+        // Limpiar selección
+        function clearSelection() {
+            selectedElements = [];
+            updateSelectedElements();
+            updateElementStyles();
+            document.getElementById("results").innerHTML = "";
+        }
+
+        // Función para normalizar texto (quitar tildes y pasar a minúsculas)
+        function normalizeText(text) {
+            return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        }
+        // Función de búsqueda
+        function buscadorPeriodico() {
+            const input = document.getElementById('search-input');
+            input.addEventListener('input', function() {
+                const query = normalizeText(this.value.trim());
+                const elementsDivs = document.querySelectorAll('.element');
+                let found = false;
+                elementsDivs.forEach(el => {
+                    el.classList.remove('levantado');
+                    el.style.transition = 'all 0.3s ease';
+                    const symbol = normalizeText(el.getAttribute('data-symbol'));
+                    const name = normalizeText(el.getAttribute('data-name'));
+                    const number = el.getAttribute('data-number');
+                    const matches = symbol.includes(query) || name.includes(query) || number.includes(query);
+                    if (!query || matches) {
+                        el.style.display = 'block';
+                        setTimeout(() => {
+                            el.style.opacity = '1';
+                            el.style.transform = 'scale(1)';
+                        }, 10);
+                        if (query && !found && matches) {
+                            el.classList.add('levantado');
+                            found = true;
+                        }
+                    } else {
+                        el.style.opacity = '0';
+                        el.style.transform = 'scale(0.9)';
+                        setTimeout(() => {
+                            el.style.display = 'none';
+                        }, 300);
+                    }
+                });
+            });
+        }
+
+        // Función para mostrar información del elemento
+        function showElementInfo(element) {
+            const popupContent = document.getElementById('popup-content');
+            const elementNumber = elements.indexOf(element) + 1;
+            let html = `
+                <h2>${element.name}</h2>
+                <img src="assets/images/${elementNumber}.png" alt="${element.name}" style="width: 100%; max-width: 300px; margin: 10px 0;">
+                <p><strong>Número atómico:</strong> ${elementNumber}</p>
+                <p><strong>Símbolo:</strong> ${element.symbol}</p>
+                <p><strong>Masa atómica:</strong> ${element.mass} u</p>
+                <p><strong>Electronegatividad:</strong> ${element.electronegativity || "N/A"}</p>
+                <p><strong>Valencias:</strong> ${element.valences.join(", ")}</p>
+                <p><strong>Categoría:</strong> ${element.category}</p>
+            `;
+            if (infoExtendida[element.name]) {
+                html += `<hr>${infoExtendida[element.name]}`;
+            }
+            popupContent.innerHTML = html;
+            const popup = document.querySelector('.popup');
+            const popupOverlay = document.querySelector('.popup-overlay');
+            popup.style.display = 'block';
+            popupOverlay.style.display = 'block';
+        }
+
+        // Toggle del modo enlaces
+        function toggleBondMode() {
+            bondMode = !bondMode;
+            const bondModeButton = document.getElementById('bond-mode');
+            const title = document.querySelector('h1');
+            const animatedBackground = document.querySelector('.animated-background');
+            
+            if (bondMode) {
+                bondModeButton.textContent = 'Modo Normal';
+                bondModeButton.style.backgroundColor = '#4CAF50';
+                title.textContent = 'Modo de Enlaces Químicos';
+                title.classList.add('mode-change');
+                animatedBackground.style.display = 'block';
+                setTimeout(() => {
+                    title.classList.remove('mode-change');
+                }, 500);
+            } else {
+                bondModeButton.textContent = 'Modo Enlaces';
+                bondModeButton.style.backgroundColor = '#000';
+                title.textContent = 'TABLA PERIODICA';
+                title.classList.add('mode-change');
+                animatedBackground.style.display = 'none';
+                setTimeout(() => {
+                    title.classList.remove('mode-change');
+                }, 500);
+            }
+            
+            // Limpiar selección al cambiar de modo
+            clearSelection();
+        }
+
+        // Event listeners
+        document.getElementById("calculate").addEventListener("click", analyzeChemicalBonds);
+        document.getElementById("clear").addEventListener("click", clearSelection);
+        document.getElementById("bond-mode").addEventListener("click", toggleBondMode);
+        document.querySelector('.popup-close').addEventListener('click', () => {
+            document.querySelector('.popup').style.display = 'none';
+            document.querySelector('.popup-overlay').style.display = 'none';
+        });
+        document.querySelector('.popup-overlay').addEventListener('click', () => {
+            document.querySelector('.popup').style.display = 'none';
+            document.querySelector('.popup-overlay').style.display = 'none';
+        });
+
+        // --- FILTRO POR CATEGORÍA ---
+        function setupCategoryFilter() {
+            let activeCategory = null;
+            const legendDivs = document.querySelectorAll('#legend .element');
+            legendDivs.forEach(legend => {
+                legend.style.cursor = 'pointer';
+                legend.addEventListener('click', function() {
+                    const classes = Array.from(this.classList);
+                    const category = classes.find(c => c !== 'element');
+                    if (!category) return;
+                    const elementsDivs = document.querySelectorAll('.element');
+                    if (activeCategory === category) {
+                        // Desactivar filtro
+                        elementsDivs.forEach(el => {
+                            el.classList.remove('resaltado-categoria', 'desactivado-categoria');
+                        });
+                        activeCategory = null;
+                    } else {
+                        elementsDivs.forEach(el => {
+                            if (el.classList.contains(category)) {
+                                el.classList.add('resaltado-categoria');
+                                el.classList.remove('desactivado-categoria');
+                            } else {
+                                el.classList.remove('resaltado-categoria');
+                                el.classList.add('desactivado-categoria');
+                            }
+                        });
+                        activeCategory = category;
+                    }
+                });
+            });
+        }
+
+        // Inicializar
+        document.addEventListener("DOMContentLoaded", () => {
+            initPeriodicTable();
+            setupCategoryFilter();
+        });
+    </script>
+</body>
+</html>
